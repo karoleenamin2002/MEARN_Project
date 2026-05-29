@@ -1,23 +1,12 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const clientSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, 'Client name is required'],
-      trim: true,
-    },
-    phone: {
-      type: String,
-      trim: true,
-    },
-    type: {
-      type: String,
-      enum: ['vendor', 'client'],
-      required: [true, 'Client type is required'],
-    },
+    name: { type: String, required: [true, 'Client name is required'], trim: true },
+    phone: { type: String, trim: true },
+    type: { type: String, enum: ['vendor', 'client'], required: [true, 'Client type is required'] },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Client', clientSchema);
+export default mongoose.model('Client', clientSchema);

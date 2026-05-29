@@ -1,20 +1,17 @@
-const InventoryTransaction = require('../models/InventoryTransaction');
-const APIFeatures = require('../utils/apiFeatures');
+import InventoryTransaction from '../models/InventoryTransaction.js';
+import APIFeatures from '../utils/apiFeatures.js';
 
 // @desc    Get all transactions
 // @route   GET /api/inventory-transactions
 // @access  Private
-exports.getTransactions = async (req, res, next) => {
+export const getTransactions = async (req, res, next) => {
   try {
     const features = new APIFeatures(
       InventoryTransaction.find()
         .populate('productId', 'name barcode')
         .populate('sourceInvoiceId', 'invoiceNumber invoiceType'),
       req.query
-    )
-      .filter()
-      .sort()
-      .paginate();
+    ).filter().sort().paginate();
 
     const transactions = await features.query;
     res.json({ success: true, count: transactions.length, data: transactions });
@@ -26,7 +23,7 @@ exports.getTransactions = async (req, res, next) => {
 // @desc    Get transactions for specific product
 // @route   GET /api/inventory-transactions/product/:productId
 // @access  Private
-exports.getProductTransactions = async (req, res, next) => {
+export const getProductTransactions = async (req, res, next) => {
   try {
     const transactions = await InventoryTransaction.find({ productId: req.params.productId })
       .populate('sourceInvoiceId', 'invoiceNumber invoiceType')

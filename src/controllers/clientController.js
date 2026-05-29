@@ -1,10 +1,10 @@
-const Client = require('../models/Client');
-const APIFeatures = require('../utils/apiFeatures');
+import Client from '../models/Client.js';
+import APIFeatures from '../utils/apiFeatures.js';
 
 // @desc    Get all clients/vendors
 // @route   GET /api/clients
 // @access  Private
-exports.getClients = async (req, res, next) => {
+export const getClients = async (req, res, next) => {
   try {
     const features = new APIFeatures(Client.find(), req.query).filter().sort().paginate();
     const clients = await features.query;
@@ -17,7 +17,7 @@ exports.getClients = async (req, res, next) => {
 // @desc    Get single client
 // @route   GET /api/clients/:id
 // @access  Private
-exports.getClient = async (req, res, next) => {
+export const getClient = async (req, res, next) => {
   try {
     const client = await Client.findById(req.params.id);
     if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
@@ -30,7 +30,7 @@ exports.getClient = async (req, res, next) => {
 // @desc    Create client
 // @route   POST /api/clients
 // @access  Private
-exports.createClient = async (req, res, next) => {
+export const createClient = async (req, res, next) => {
   try {
     const client = await Client.create(req.body);
     res.status(201).json({ success: true, data: client });
@@ -42,12 +42,9 @@ exports.createClient = async (req, res, next) => {
 // @desc    Update client
 // @route   PUT /api/clients/:id
 // @access  Private
-exports.updateClient = async (req, res, next) => {
+export const updateClient = async (req, res, next) => {
   try {
-    const client = await Client.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const client = await Client.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
     res.json({ success: true, data: client });
   } catch (error) {
@@ -58,7 +55,7 @@ exports.updateClient = async (req, res, next) => {
 // @desc    Delete client
 // @route   DELETE /api/clients/:id
 // @access  Private/Admin
-exports.deleteClient = async (req, res, next) => {
+export const deleteClient = async (req, res, next) => {
   try {
     const client = await Client.findByIdAndDelete(req.params.id);
     if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
