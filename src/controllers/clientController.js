@@ -1,66 +1,116 @@
-import Client from '../models/Client.js';
-import APIFeatures from '../utils/apiFeatures.js';
+import Client from "../models/Client.js";
 
-// @desc    Get all clients/vendors
-// @route   GET /api/clients
-// @access  Private
-export const getClients = async (req, res, next) => {
+// GET /api/clients?type=vendor|client&search=...
+export const getClients = async (req, res) => {
   try {
-    const features = new APIFeatures(Client.find(), req.query).filter().sort().paginate();
-    const clients = await features.query;
-    res.json({ success: true, count: clients.length, data: clients });
+    const { type, search } = req.query;
+
+    const filter = { isActive: true };
+
+    if (type) {
+      if (!["client", "vendor"].includes(type)) {
+        return res
+          .status(400)
+          .json({ message: "Invalid type. Use 'client' or 'vendor'" });
+      }
+      filter.type = type;
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const clients = await Client.find(filter).sort({ createdAt: -1 });
+
+    res.status(200).json({ count: clients.length, data: clients });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// @desc    Get single client
-// @route   GET /api/clients/:id
-// @access  Private
-export const getClient = async (req, res, next) => {
+// GET /api/clients/:id
+export const getClientById = async (req, res) => {
   try {
     const client = await Client.findById(req.params.id);
-    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
-    res.json({ success: true, data: client });
+
+    if (!client || !client.isActive) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    res.status(200).json({ data: client });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// @desc    Create client
-// @route   POST /api/clients
-// @access  Private
-export const createClient = async (req, res, next) => {
+// POST /api/clients
+export const createClient = async (req, res) => {
   try {
-    const client = await Client.create(req.body);
-    res.status(201).json({ success: true, data: client });
+    const { name, type, phone, email, address, notes } = req.body;
+
+    if (!name || !type) {
+      return res.status(400).json({ message: "Name and type are required" });
+    }
+
+    const client = await Client.create({
+      name,
+      type,
+      phone,
+      email,
+      address,
+      notes,
+    });
+
+    res
+      .status(201)
+      .json({ message: "Client created successfully", data: client });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// @desc    Update client
-// @route   PUT /api/clients/:id
-// @access  Private
-export const updateClient = async (req, res, next) => {
+// PUT /api/clients/:id
+export const updateClient = async (req, res) => {
   try {
-    const client = await Client.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
-    res.json({ success: true, data: client });
+    const { name, type, phone, email, address, notes } = req.body;
+
+    const client = await Client.findByIdAndUpdate(
+      req.params.id,
+      { name, type, phone, email, address, notes },
+      { new: true, runValidators: true },
+    );
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Client updated successfully", data: client });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// @desc    Delete client
-// @route   DELETE /api/clients/:id
-// @access  Private/Admin
-export const deleteClient = async (req, res, next) => {
+// DELETE /api/clients/:id (soft delete)
+export const deleteClient = async (req, res) => {
   try {
-    const client = await Client.findByIdAndDelete(req.params.id);
-    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
-    res.json({ success: true, message: 'Client deleted' });
+    const client = await Client.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true },
+    );
+
+    if (!client) {
+      return res.status(404).json({ message: "Client not found" });
+    }
+
+    res.status(200).json({ message: "Client deleted successfully" });
   } catch (error) {
-    next(error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
