@@ -1,9 +1,9 @@
-const Notification = require('../models/Notification');
+import Notification from '../models/Notification.js';
 
 // @desc    Get all notifications
 // @route   GET /api/notifications
 // @access  Private
-exports.getNotifications = async (req, res, next) => {
+export const getNotifications = async (req, res, next) => {
   try {
     const notifications = await Notification.find()
       .populate('relatedProductId', 'name')
@@ -18,7 +18,7 @@ exports.getNotifications = async (req, res, next) => {
 // @desc    Mark notification as read
 // @route   PUT /api/notifications/:id/read
 // @access  Private
-exports.markAsRead = async (req, res, next) => {
+export const markAsRead = async (req, res, next) => {
   try {
     const notification = await Notification.findByIdAndUpdate(
       req.params.id,
@@ -35,7 +35,7 @@ exports.markAsRead = async (req, res, next) => {
 // @desc    Mark all as read
 // @route   PUT /api/notifications/read-all
 // @access  Private
-exports.markAllAsRead = async (req, res, next) => {
+export const markAllAsRead = async (req, res, next) => {
   try {
     await Notification.updateMany(
       { readBy: { $nin: [req.user._id] } },
@@ -47,10 +47,10 @@ exports.markAllAsRead = async (req, res, next) => {
   }
 };
 
-// @desc    Create notification (internal use / admin)
+// @desc    Create notification
 // @route   POST /api/notifications
 // @access  Private/Admin
-exports.createNotification = async (req, res, next) => {
+export const createNotification = async (req, res, next) => {
   try {
     const notification = await Notification.create(req.body);
     res.status(201).json({ success: true, data: notification });

@@ -1,7 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const { getClients, getClient, createClient, updateClient, deleteClient } = require('../controllers/clientController');
-const { protect, authorize } = require('../middleware/auth');
+import { Router } from 'express';
+import { getClients, getClient, createClient, updateClient, deleteClient } from '../controllers/clientController.js';
+import { protect, authorize } from '../middleware/auth.js';
+
+const router = Router();
 
 router.use(protect);
 router.get('/', getClients);
@@ -10,4 +11,4 @@ router.post('/', createClient);
 router.put('/:id', updateClient);
 router.delete('/:id', authorize('admin'), deleteClient);
 
-module.exports = router;
+export default router;
