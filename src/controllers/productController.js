@@ -1,10 +1,10 @@
-const Product = require('../models/Product');
-const APIFeatures = require('../utils/apiFeatures');
+import Product from '../models/Product.js';
+import APIFeatures from '../utils/apiFeatures.js';
 
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
-exports.getProducts = async (req, res, next) => {
+export const getProducts = async (req, res, next) => {
   try {
     const features = new APIFeatures(Product.find(), req.query).filter().sort().paginate();
     const products = await features.query;
@@ -17,7 +17,7 @@ exports.getProducts = async (req, res, next) => {
 // @desc    Get single product
 // @route   GET /api/products/:id
 // @access  Private
-exports.getProduct = async (req, res, next) => {
+export const getProduct = async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
@@ -30,7 +30,7 @@ exports.getProduct = async (req, res, next) => {
 // @desc    Create product
 // @route   POST /api/products
 // @access  Private
-exports.createProduct = async (req, res, next) => {
+export const createProduct = async (req, res, next) => {
   try {
     const product = await Product.create(req.body);
     res.status(201).json({ success: true, data: product });
@@ -42,12 +42,9 @@ exports.createProduct = async (req, res, next) => {
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private
-exports.updateProduct = async (req, res, next) => {
+export const updateProduct = async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
     res.json({ success: true, data: product });
   } catch (error) {
@@ -58,7 +55,7 @@ exports.updateProduct = async (req, res, next) => {
 // @desc    Delete product
 // @route   DELETE /api/products/:id
 // @access  Private/Admin
-exports.deleteProduct = async (req, res, next) => {
+export const deleteProduct = async (req, res, next) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
@@ -68,10 +65,10 @@ exports.deleteProduct = async (req, res, next) => {
   }
 };
 
-// @desc    Get low stock products (quantity <= minimumStock)
+// @desc    Get low stock products
 // @route   GET /api/products/low-stock
 // @access  Private
-exports.getLowStock = async (req, res, next) => {
+export const getLowStock = async (req, res, next) => {
   try {
     const products = await Product.find({ $expr: { $lte: ['$quantity', '$minimumStock'] } });
     res.json({ success: true, count: products.length, data: products });
