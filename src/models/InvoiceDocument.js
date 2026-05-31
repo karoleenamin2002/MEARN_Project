@@ -1,11 +1,8 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const invoiceDocumentSchema = new mongoose.Schema(
   {
-    invoiceId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Invoice',
-    },
+    invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
     fileName: { type: String, required: true },
     fileType: { type: String, enum: ['pdf', 'jpg', 'jpeg', 'png'], required: true },
     fileUrl: { type: String, required: true },
@@ -15,4 +12,4 @@ const invoiceDocumentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('InvoiceDocument', invoiceDocumentSchema);
+export default mongoose.model('InvoiceDocument', invoiceDocumentSchema);

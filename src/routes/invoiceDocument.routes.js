@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const { uploadDocument, getDocument, deleteDocument } = require('../controllers/invoiceDocumentController');
-const { protect, authorize } = require('../middleware/auth');
+import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import { uploadDocument, getDocument, deleteDocument } from '../controllers/invoiceDocumentController.js';
+import { protect, authorize } from '../middleware/auth.js';
+
+const router = Router();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -15,11 +16,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /pdf|jpg|jpeg|png/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    ext ? cb(null, true) : cb(new Error('Only PDF, JPG, PNG files allowed'));
+    allowed.test(path.extname(file.originalname).toLowerCase())
+      ? cb(null, true)
+      : cb(new Error('Only PDF, JPG, PNG files allowed'));
   },
 });
 
@@ -28,4 +30,4 @@ router.post('/', upload.single('file'), uploadDocument);
 router.get('/:id', getDocument);
 router.delete('/:id', authorize('admin'), deleteDocument);
 
-module.exports = router;
+export default router;

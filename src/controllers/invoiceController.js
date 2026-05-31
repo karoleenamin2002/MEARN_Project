@@ -1,10 +1,9 @@
-const Invoice = require('../models/Invoice');
-const Product = require('../models/Product');
-const InventoryTransaction = require('../models/InventoryTransaction');
-const APIFeatures = require('../utils/apiFeatures');
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import Invoice from '../models/Invoice.js';
+import Product from '../models/Product.js';
+import InventoryTransaction from '../models/InventoryTransaction.js';
+import APIFeatures from '../utils/apiFeatures.js';
 
-// Helper: update product stock and log transaction
 const updateStock = async (session, items, invoiceType, invoiceId) => {
   for (const item of items) {
     if (!item.productId) continue;
@@ -15,8 +14,6 @@ const updateStock = async (session, items, invoiceType, invoiceId) => {
     const quantityBefore = product.quantity;
     let quantityAfter;
 
-    // purchase / sales_return → increase stock
-    // sale / purchase_return → decrease stock
     if (['purchase', 'sales_return'].includes(invoiceType)) {
       quantityAfter = quantityBefore + item.quantity;
     } else {
@@ -24,24 +21,10 @@ const updateStock = async (session, items, invoiceType, invoiceId) => {
       if (quantityAfter < 0) throw new Error(`Insufficient stock for ${product.name}`);
     }
 
-    await Product.findByIdAndUpdate(
-      item.productId,
-      { quantity: quantityAfter },
-      { session }
-    );
+    await Product.findByIdAndUpdate(item.productId, { quantity: quantityAfter }, { session });
 
     await InventoryTransaction.create(
-      [
-        {
-          productId: item.productId,
-          transactionType: invoiceType,
-          quantity: item.quantity,
-          quantityBefore,
-          quantityAfter,
-          sourceInvoiceId: invoiceId,
-          notes: `Auto from invoice`,
-        },
-      ],
+      [{ productId: item.productId, transactionType: invoiceType, quantity: item.quantity, quantityBefore, quantityAfter, sourceInvoiceId: invoiceId, notes: 'Auto from invoice' }],
       { session }
     );
   }
@@ -50,15 +33,12 @@ const updateStock = async (session, items, invoiceType, invoiceId) => {
 // @desc    Get all invoices
 // @route   GET /api/invoices
 // @access  Private
-exports.getInvoices = async (req, res, next) => {
+export const getInvoices = async (req, res, next) => {
   try {
     const features = new APIFeatures(
       Invoice.find().populate('clientId', 'name type').populate('uploadedBy', 'name'),
       req.query
-    )
-      .filter()
-      .sort()
-      .paginate();
+    ).filter().sort().paginate();
 
     const invoices = await features.query;
     res.json({ success: true, count: invoices.length, data: invoices });
@@ -70,7 +50,7 @@ exports.getInvoices = async (req, res, next) => {
 // @desc    Get single invoice
 // @route   GET /api/invoices/:id
 // @access  Private
-exports.getInvoice = async (req, res, next) => {
+export const getInvoice = async (req, res, next) => {
   try {
     const invoice = await Invoice.findById(req.params.id)
       .populate('clientId', 'name phone type')
@@ -87,14 +67,12 @@ exports.getInvoice = async (req, res, next) => {
 // @desc    Create invoice (with stock update in transaction)
 // @route   POST /api/invoices
 // @access  Private
-exports.createInvoice = async (req, res, next) => {
+export const createInvoice = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const invoiceData = { ...req.body, uploadedBy: req.user._id };
-    const [invoice] = await Invoice.create([invoiceData], { session });
+    const [invoice] = await Invoice.create([{ ...req.body, uploadedBy: req.user._id }], { session });
 
-    // Update stock for product-affecting invoice types
     if (['purchase', 'sale', 'purchase_return', 'sales_return'].includes(invoice.invoiceType)) {
       await updateStock(session, invoice.items, invoice.invoiceType, invoice._id);
     }
@@ -109,15 +87,15 @@ exports.createInvoice = async (req, res, next) => {
   }
 };
 
-// @desc    Update invoice (basic fields only, not items)
+// @desc    Update invoice
 // @route   PUT /api/invoices/:id
 // @access  Private/Admin
-exports.updateInvoice = async (req, res, next) => {
+export const updateInvoice = async (req, res, next) => {
   try {
-    const { invoiceDate, vendorName, clientId, paymentMethod, notes } = req.body;
+    const { invoiceDate, vendorName, clientId, paymentMethod } = req.body;
     const invoice = await Invoice.findByIdAndUpdate(
       req.params.id,
-      { invoiceDate, vendorName, clientId, paymentMethod, notes },
+      { invoiceDate, vendorName, clientId, paymentMethod },
       { new: true, runValidators: true }
     );
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -130,7 +108,7 @@ exports.updateInvoice = async (req, res, next) => {
 // @desc    Delete invoice
 // @route   DELETE /api/invoices/:id
 // @access  Private/Admin
-exports.deleteInvoice = async (req, res, next) => {
+export const deleteInvoice = async (req, res, next) => {
   try {
     const invoice = await Invoice.findByIdAndDelete(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -140,19 +118,13 @@ exports.deleteInvoice = async (req, res, next) => {
   }
 };
 
-// @desc    Get invoices summary/stats
+// @desc    Get invoices stats
 // @route   GET /api/invoices/stats
 // @access  Private
-exports.getStats = async (req, res, next) => {
+export const getStats = async (req, res, next) => {
   try {
     const stats = await Invoice.aggregate([
-      {
-        $group: {
-          _id: '$invoiceType',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$finalAmount' },
-        },
-      },
+      { $group: { _id: '$invoiceType', count: { $sum: 1 }, totalAmount: { $sum: '$finalAmount' } } },
     ]);
     res.json({ success: true, data: stats });
   } catch (error) {

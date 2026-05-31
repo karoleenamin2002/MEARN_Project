@@ -34,7 +34,6 @@ const errorHandler = (err, req, res, next) => {
     error.statusCode = 400;
   }
 
-  // Mongoose validation error
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors)
       .map((e) => e.message)
@@ -43,7 +42,6 @@ const errorHandler = (err, req, res, next) => {
     error.statusCode = 400;
   }
 
-  // Mongoose cast error (invalid ObjectId)
   if (err.name === 'CastError') {
     error.message = `Invalid ${err.kind} format: ${err.value}`;
     error.statusCode = 400;
