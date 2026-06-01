@@ -1,11 +1,11 @@
-import { catchError } from "../middleware/catchError.js";
+import { catchError } from "../utils/catchError.js";
 import {
   invoiceDocumentUpdateValidation,
   invoiceDocumentValidation,
 } from "../models/InvoiceDocument/InvoiceDocumentValidation.js";
 import documentModel from "../models/InvoiceDocument/InvoiceDocument.js";
 import invoiceModel from "../models/Invoice.js";
-import AppError from "../middleware/appError.js";
+import AppError from "../utils/appError.js";
 
 export const createInvoiceDocument = catchError(async (req, res) => {
   const { error, value: inputValues } = invoiceDocumentUpdateValidation.validate(
