@@ -21,6 +21,16 @@
  * @param {Function} next - Express next middleware function
  */
 const errorHandler = (err, req, res, next) => {
+
+  /**
+   * Handling the error (Cannot set headers once the response sent to the client)
+   * this happens cause we try to send response in the middleware and send response again 
+   * in the next one or in the controller (the final middleware)
+   */
+  if (res.headersSent) {
+    return next(err);
+  }
+
   // Copy error object to avoid mutation
   let error = { ...err };
   error.message = err.message;

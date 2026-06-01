@@ -14,7 +14,7 @@ import userRoutes from "./routes/user.routes.js";
 // import clientRoutes from './routes/client.routes.js';
 // import productRoutes from "./routes/product.routes.js";
 // import invoiceRoutes from "./routes/invoice.routes.js";
-// import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
+import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
 // import inventoryRoutes from "./routes/inventory.routes.js";
 // import notificationRoutes from "./routes/notification.routes.js";
 
@@ -61,7 +61,7 @@ app.use("/api/users", userRoutes);
 // app.use("/api/invoices", invoiceRoutes);
 
 // // Invoice document routes
-// app.use("/api/invoice-documents", invoiceDocumentRoutes);
+app.use("/api/upload-invoice", invoiceDocumentRoutes);
 
 // // Inventory transaction routes
 // app.use("/api/inventory-transactions", inventoryRoutes);

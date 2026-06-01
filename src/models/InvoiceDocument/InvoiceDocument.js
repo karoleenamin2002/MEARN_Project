@@ -5,7 +5,7 @@ const invoiceDocumentSchema = new mongoose.Schema(
     invoiceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
-      required,
+      required: true,
     },
     fileName: { type: String, required: true },
     fileType: {
