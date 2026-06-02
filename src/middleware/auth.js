@@ -1,38 +1,97 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+/**
+ * Helper function to send consistent auth error responses
+ */
+const sendAuthError = (res, statusCode, message) => {
+  res.status(statusCode).json({
+    success: false,
+    message,
+  });
+};
+
+/**
+ * @middleware protect
+ * @desc Authenticate user via JWT token from Authorization header
+ * @access Applied to protected routes
+ *
+ * Expected header format: Authorization: Bearer <token>
+ * Attaches decoded user to req.user
+ */
 export const protect = async (req, res, next) => {
   try {
-    let token;
-    if (req.headers.authorization?.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    let token = null;
+
+    // Validate Authorization header format
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
     }
 
+    // Check if token exists
     if (!token) {
-      return res.status(401).json({ success: false, message: 'Not authorized, no token' });
+      return sendAuthError(
+        res,
+        401,
+        'Unauthorized access - missing authentication token'
+      );
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+    // Verify token signature and expiration
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      if (jwtError.name === 'TokenExpiredError') {
+        return sendAuthError(res, 401, 'Authentication token has expired');
+      }
+      if (jwtError.name === 'JsonWebTokenError') {
+        return sendAuthError(res, 401, 'Invalid authentication token');
+      }
+      throw jwtError;
+    }
 
+    // Fetch user from database
+    req.user = await User.findById(decoded.id).select('-passwordHash');
+
+    // Check if user still exists
     if (!req.user) {
-      return res.status(401).json({ success: false, message: 'User no longer exists' });
+      return sendAuthError(res, 401, 'User no longer exists');
     }
 
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    return sendAuthError(res, 401, 'Authentication failed');
   }
 };
 
+/**
+ * @middleware authorize
+ * @desc Check if authenticated user has required role(s)
+ * @access Applied after protect middleware
+ * @param {...string} roles - Allowed roles
+ * @returns {Function} Express middleware function
+ *
+ * Usage: router.get('/admin-only', protect, authorize('admin'), controller)
+ */
 export const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Role '${req.user.role}' is not authorized`,
-      });
+    // Ensure protect middleware has run
+    if (!req.user) {
+      return sendAuthError(res, 401, 'User information missing - authentication required');
     }
+
+    // Check if user role is in allowed roles
+    if (!roles.includes(req.user.role)) {
+      return sendAuthError(
+        res,
+        403,
+        `User role '${req.user.role}' does not have permission to access this resource`
+      );
+    }
+
     next();
   };
 };

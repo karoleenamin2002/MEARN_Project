@@ -1,133 +1,62 @@
-import mongoose from 'mongoose';
-import Invoice from '../models/Invoice.js';
-import Product from '../models/Product.js';
-import InventoryTransaction from '../models/InventoryTransaction.js';
-import APIFeatures from '../utils/apiFeatures.js';
+import * as invoiceService from "../services/invoice.service.js";
 
-const updateStock = async (session, items, invoiceType, invoiceId) => {
-  for (const item of items) {
-    if (!item.productId) continue;
+// POST /invoices 
+export const createInvoice = async (req, res, next) => {
+  try {
+    const invoice = await invoiceService.createInvoice(req.body, req.user._id);
 
-    const product = await Product.findById(item.productId).session(session);
-    if (!product) throw new Error(`Product ${item.productId} not found`);
-
-    const quantityBefore = product.quantity;
-    let quantityAfter;
-
-    if (['purchase', 'sales_return'].includes(invoiceType)) {
-      quantityAfter = quantityBefore + item.quantity;
-    } else {
-      quantityAfter = quantityBefore - item.quantity;
-      if (quantityAfter < 0) throw new Error(`Insufficient stock for ${product.name}`);
-    }
-
-    await Product.findByIdAndUpdate(item.productId, { quantity: quantityAfter }, { session });
-
-    await InventoryTransaction.create(
-      [{ productId: item.productId, transactionType: invoiceType, quantity: item.quantity, quantityBefore, quantityAfter, sourceInvoiceId: invoiceId, notes: 'Auto from invoice' }],
-      { session }
-    );
+    return res.status(201).json({
+      success : true,
+      message : "Invoice created successfully",
+      data    : invoice,
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Get all invoices
-// @route   GET /api/invoices
-// @access  Private
+// GET /invoices 
 export const getInvoices = async (req, res, next) => {
   try {
-    const features = new APIFeatures(
-      Invoice.find().populate('clientId', 'name type').populate('uploadedBy', 'name'),
-      req.query
-    ).filter().sort().paginate();
+    const result = await invoiceService.getInvoices(req.query);
 
-    const invoices = await features.query;
-    res.json({ success: true, count: invoices.length, data: invoices });
-  } catch (error) {
-    next(error);
+    return res.status(200).json({
+      success : true,
+      data    : result,
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Get single invoice
-// @route   GET /api/invoices/:id
-// @access  Private
-export const getInvoice = async (req, res, next) => {
+// GET /invoices/:id 
+export const getInvoiceById = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
-      .populate('clientId', 'name phone type')
-      .populate('uploadedBy', 'name email')
-      .populate('documentId');
+    const invoice = await invoiceService.getInvoiceById(req.params.id);
 
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    res.json({ success: true, data: invoice });
-  } catch (error) {
-    next(error);
+    return res.status(200).json({
+      success : true,
+      data    : invoice,
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Create invoice (with stock update in transaction)
-// @route   POST /api/invoices
-// @access  Private
-export const createInvoice = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+export const cancelInvoice = async (req, res, next) => {
   try {
-    const [invoice] = await Invoice.create([{ ...req.body, uploadedBy: req.user._id }], { session });
-
-    if (['purchase', 'sale', 'purchase_return', 'sales_return'].includes(invoice.invoiceType)) {
-      await updateStock(session, invoice.items, invoice.invoiceType, invoice._id);
-    }
-
-    await session.commitTransaction();
-    res.status(201).json({ success: true, data: invoice });
-  } catch (error) {
-    await session.abortTransaction();
-    next(error);
-  } finally {
-    session.endSession();
-  }
-};
-
-// @desc    Update invoice
-// @route   PUT /api/invoices/:id
-// @access  Private/Admin
-export const updateInvoice = async (req, res, next) => {
-  try {
-    const { invoiceDate, vendorName, clientId, paymentMethod } = req.body;
-    const invoice = await Invoice.findByIdAndUpdate(
+    const invoice = await invoiceService.cancelInvoice(
       req.params.id,
-      { invoiceDate, vendorName, clientId, paymentMethod },
-      { new: true, runValidators: true }
+      req.user._id,
+      req.body.reason
     );
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    res.json({ success: true, data: invoice });
-  } catch (error) {
-    next(error);
-  }
-};
 
-// @desc    Delete invoice
-// @route   DELETE /api/invoices/:id
-// @access  Private/Admin
-export const deleteInvoice = async (req, res, next) => {
-  try {
-    const invoice = await Invoice.findByIdAndDelete(req.params.id);
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    res.json({ success: true, message: 'Invoice deleted' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Get invoices stats
-// @route   GET /api/invoices/stats
-// @access  Private
-export const getStats = async (req, res, next) => {
-  try {
-    const stats = await Invoice.aggregate([
-      { $group: { _id: '$invoiceType', count: { $sum: 1 }, totalAmount: { $sum: '$finalAmount' } } },
-    ]);
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    next(error);
+    return res.status(200).json({
+      success: true,
+      message: "Invoice cancelled successfully",
+      data: invoice,
+    });
+  } catch (err) {
+    next(err);
   }
 };

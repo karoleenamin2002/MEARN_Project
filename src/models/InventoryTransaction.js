@@ -5,7 +5,14 @@ const inventoryTransactionSchema = new mongoose.Schema(
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     transactionType: {
       type: String,
-      enum: ['purchase', 'sale', 'purchase_return', 'sales_return', 'adjustment'],
+      enum: [
+  'purchase',
+  'sale',
+  'purchase_return',
+  'sales_return',
+  'adjustment',
+  'invoice_cancel'
+],
       required: true,
     },
     quantity: { type: Number, required: true },
