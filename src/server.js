@@ -17,6 +17,7 @@ import invoiceRoutes from "./routes/invoice.routes.js";
 import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 import dns from "node:dns";
 
@@ -49,6 +50,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/invoice-documents", invoiceDocumentRoutes);
 app.use("/api/inventory-transactions", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {

@@ -40,7 +40,6 @@ const itemRules = [
 
   body("items")
     .if((_, { req }) => req.body.invoiceType === "expense")
-      // هلغيها بعدين لما اعمل المصروفات
     .optional()
     .isArray()
     .withMessage("items must be an array"),

@@ -29,16 +29,22 @@ const invoiceItemSchema = new mongoose.Schema(
       min: [0, "Total price cannot be negative"],
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
-// Invoice Schema 
+// Invoice Schema
 const invoiceSchema = new mongoose.Schema(
   {
     invoiceType: {
       type: String,
       enum: {
-        values: ["purchase", "sale", "purchase_return", "sales_return", "expense"],
+        values: [
+          "purchase",
+          "sale",
+          "purchase_return",
+          "sales_return",
+          "expense",
+        ],
         message:
           "invoiceType must be one of: purchase, sale, purchase_return, sales_return, expense",
       },
@@ -84,7 +90,41 @@ const invoiceSchema = new mongoose.Schema(
       default: null,
     },
 
-    // Amounts (computed by Service, stored as-is) 
+    expenseName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    expenseType: {
+      type: String,
+      enum: [
+        "rent",
+        "salary",
+        "electricity",
+        "internet",
+        "transportation",
+        "maintenance",
+        "marketing",
+        "office_supplies",
+        "other",
+      ],
+      default: null,
+    },
+
+    expenseDescription: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    expenseOtherNotes: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    // Amounts (computed by Service, stored as-is)
     baseAmount: {
       type: Number,
       required: [true, "Base amount is required"],
@@ -128,7 +168,7 @@ const invoiceSchema = new mongoose.Schema(
       min: [0, "Due amount cannot be negative"],
     },
 
-    //  Items 
+    //  Items
     items: {
       type: [invoiceItemSchema],
       validate: {
@@ -140,7 +180,7 @@ const invoiceSchema = new mongoose.Schema(
       },
     },
 
-    // Relations 
+    // Relations
     relatedInvoiceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
@@ -166,27 +206,26 @@ const invoiceSchema = new mongoose.Schema(
     },
 
     isCancelled: {
-  type: Boolean,
-  default: false,
-},
+      type: Boolean,
+      default: false,
+    },
 
-cancelledAt: {
-  type: Date,
-  default: null,
-},
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
 
-cancelledBy: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "User",
-  default: null,
-},
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
-cancellationReason: {
-  type: String,
-  trim: true,
-  default: null,
-},
-       
+    cancellationReason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
 
     notes: {
       type: String,
@@ -197,26 +236,55 @@ cancellationReason: {
   {
     timestamps: true,
     collection: "invoices",
-  }
+  },
 );
 
-//Indexes 
+invoiceSchema.pre("validate", function (next) {
+  if (this.invoiceType === "expense") {
+    if (!this.expenseName) {
+      return next(new Error("expenseName is required"));
+    }
+
+    if (!this.expenseType) {
+      return next(new Error("expenseType is required"));
+    }
+
+    if (this.expenseType === "other" && !this.expenseOtherNotes) {
+      return next(
+        new Error("expenseOtherNotes is required when expenseType is other"),
+      );
+    }
+    if (this.invoiceType === "expense") {
+      if (this.baseAmount <= 0) {
+        return next(new Error("Expense amount must be greater than zero"));
+      }
+    }
+
+    this.clientId = null;
+    this.saleSource = null;
+  }
+
+  next();
+});
+
+//Indexes
 invoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ branchId: 1, createdAt: -1 });
 invoiceSchema.index({ invoiceType: 1, createdAt: -1 });
+invoiceSchema.index({ invoiceType: 1, expenseType: 1, createdAt: -1 });
 invoiceSchema.index({ clientId: 1 });
 invoiceSchema.index({ relatedInvoiceId: 1 });
 invoiceSchema.index({ isCancelled: 1 });
 invoiceSchema.index({ createdBy: 1 });
 
-//Virtual: paymentStatus 
+//Virtual: paymentStatus
 invoiceSchema.virtual("paymentStatus").get(function () {
   if (this.dueAmount <= 0) return "paid";
   if (this.amountPaid > 0) return "partial";
   return "unpaid";
 });
 
-//  Model 
+//  Model
 const Invoice = mongoose.model("Invoice", invoiceSchema);
 
 export default Invoice;

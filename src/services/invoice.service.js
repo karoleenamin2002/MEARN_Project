@@ -3,6 +3,10 @@ import Invoice from "../models/Invoice.js";
 import Branch from "../models/Branch.js";
 import Product from "../models/Product.js";
 import InventoryTransaction from "../models/InventoryTransaction.js";
+import {
+  recordInitialPayment,
+  reverseCancelledInvoicePayments,
+} from "./payment.service.js";
 
 //  Constants
 const INVOICE_TYPE_PREFIX = {
@@ -17,8 +21,6 @@ const RETURN_TYPES = ["purchase_return", "sales_return"];
 const INVENTORY_TYPES = ["purchase", "sale", "purchase_return", "sales_return"];
 
 // Helpers
-
-// Always remember fuck accounting.
 
 //   Round a number to 2 decimal places.
 
@@ -79,7 +81,6 @@ const applyInventoryChanges = async ({
   invoiceId,
   session,
 }) => {
-  // تبا للمحاسبة
   const txDocs = [];
   const isIncoming =
     invoiceType === "purchase" || invoiceType === "sales_return";
@@ -157,15 +158,25 @@ export const createInvoice = async (body, createdBy) => {
       branchId,
       clientId = null,
       paymentMethod,
-      //saleSource : pos or MANUAL
+
       saleSource = null,
+
+      expenseName = null,
+      expenseType = null,
+      expenseDescription = null,
+      expenseOtherNotes = null,
+
       items = [],
+
       relatedInvoiceId = null,
       documentId = null,
       cashierId = null,
+
       notes = null,
+
       taxPercentage = 0,
       amountPaid = 0,
+      baseAmount: expenseBaseAmount = null,
     } = body;
 
     // ── 1. Validate return invoice references original ──────────────────
@@ -205,10 +216,25 @@ export const createInvoice = async (body, createdBy) => {
       }
 
       // Validate returned products and quantities
+      const previousReturns = await Invoice.find({
+        relatedInvoiceId: original._id,
+        invoiceType,
+        isCancelled: false,
+      })
+        .select("items")
+        .session(session);
       for (const item of items) {
         const originalItem = original.items.find(
           (i) => i.productId.toString() === item.productId.toString(),
         );
+
+        const alreadyReturnedQty = previousReturns.reduce((sum, ret) => {
+          const returnedItem = ret.items.find(
+            (i) => i.productId.toString() === item.productId.toString(),
+          );
+
+          return sum + (returnedItem?.quantity || 0);
+        }, 0);
 
         if (!originalItem) {
           throw Object.assign(
@@ -219,19 +245,31 @@ export const createInvoice = async (body, createdBy) => {
           );
         }
 
-        if (item.quantity > originalItem.quantity) {
+        if (round2(item.unitPrice) !== round2(originalItem.unitPrice)) {
           throw Object.assign(
             new Error(
-              `Return quantity exceeds original invoice quantity for product "${item.productName}"`,
+              `Returned item price does not match original invoice price for "${item.productName}". Original: ${originalItem.unitPrice}, Received: ${item.unitPrice}`,
             ),
-            { statusCode: 422 },
+            {
+              statusCode: 422,
+            },
+          );
+        }
+
+        if (alreadyReturnedQty + item.quantity > originalItem.quantity) {
+          throw Object.assign(
+            new Error(
+              `Return quantity exceeds remaining quantity for product "${item.productName}". Original: ${originalItem.quantity}, Already Returned: ${alreadyReturnedQty}, Requested: ${item.quantity}`,
+            ),
+            {
+              statusCode: 422,
+            },
           );
         }
       }
     }
 
-    // ── 2. Derive item totals and baseAmount server-side (never use client)
-    //  انا جامد في اختيار المصطلحات والاسماء عموما
+    // ── 2. Derive item totals and baseAmount server-side (never use  pos)
     let sanitizedItems = [];
 
     if (invoiceType === "sale" && saleSource === "POS") {
@@ -273,16 +311,40 @@ export const createInvoice = async (body, createdBy) => {
       }));
     }
 
-    const baseAmount = sanitizedItems.reduce(
-      (sum, item) => round2(sum + item.totalPrice),
-      0,
-    );
+    let baseAmount;
+
+    if (invoiceType === "expense") {
+      baseAmount = round2(Number(expenseBaseAmount || 0));
+    } else {
+      baseAmount = sanitizedItems.reduce(
+        (sum, item) => round2(sum + item.totalPrice),
+        0,
+      );
+    }
 
     const amounts = computeAmounts({
       baseAmount,
       taxPercentage,
       amountPaid,
     });
+
+    let initialOverpayment = 0;
+
+    if (saleSource !== "POS" && amounts.amountPaid > amounts.finalAmount) {
+      initialOverpayment = round2(amounts.amountPaid - amounts.finalAmount);
+
+      amounts.changeAmount = 0;
+    }
+
+    if (
+      invoiceType === "sale" &&
+      saleSource === "POS" &&
+      amounts.dueAmount > 0
+    ) {
+      throw Object.assign(new Error("POS sales must be paid in full"), {
+        statusCode: 422,
+      });
+    }
 
     // ── 3. Generate invoice number ──────────────────────────────────────
     const invoiceNumber = await generateInvoiceNumber(invoiceType, session);
@@ -298,6 +360,7 @@ export const createInvoice = async (body, createdBy) => {
 
     // ── 5. Guard: duplicate productId within items ──────────────────────
     if (sanitizedItems.length > 0) {
+      // set بتاخد القيم الغير متكررة
       const seen = new Set();
       for (const item of sanitizedItems) {
         const id = item.productId.toString();
@@ -323,6 +386,10 @@ export const createInvoice = async (body, createdBy) => {
           clientId,
           paymentMethod,
           saleSource,
+          expenseName,
+          expenseType,
+          expenseDescription,
+          expenseOtherNotes,
           ...amounts,
           items: sanitizedItems,
           relatedInvoiceId,
@@ -345,6 +412,15 @@ export const createInvoice = async (body, createdBy) => {
         session,
       });
     }
+
+    // ── 8. Record initial payment (if amountPaid > 0)
+    // هنا نقطة الربط مع payment
+    await recordInitialPayment({
+      invoice,
+      session,
+      createdBy,
+      initialOverpayment,
+    });
 
     await session.commitTransaction();
     return invoice;
@@ -375,6 +451,8 @@ export const getInvoices = async (query) => {
     clientId,
     paymentMethod,
     saleSource,
+    expenseType,
+    paymentStatus,
     from,
     to,
     page = 1,
@@ -392,6 +470,22 @@ export const getInvoices = async (query) => {
   if (clientId) filter.clientId = clientId;
   if (paymentMethod) filter.paymentMethod = paymentMethod;
   if (saleSource) filter.saleSource = saleSource;
+  if (expenseType) filter.expenseType = expenseType;
+
+  // Payment status filter
+  if (paymentStatus === "paid") {
+    filter.dueAmount = 0;
+  }
+
+  if (paymentStatus === "partial") {
+    filter.amountPaid = { $gt: 0 };
+    filter.dueAmount = { $gt: 0 };
+  }
+
+  if (paymentStatus === "unpaid") {
+    filter.amountPaid = 0;
+    filter.dueAmount = { $gt: 0 };
+  }
 
   if (from || to) {
     filter.createdAt = {};
@@ -444,7 +538,7 @@ export const getInvoiceById = async (id) => {
 
   return invoice;
 };
-
+// cancelInvoice
 export const cancelInvoice = async (invoiceId, cancelledBy, reason = null) => {
   const session = await Invoice.startSession();
   session.startTransaction();
@@ -454,6 +548,12 @@ export const cancelInvoice = async (invoiceId, cancelledBy, reason = null) => {
 
     if (!invoice) {
       throw Object.assign(new Error("Invoice not found"), { statusCode: 404 });
+    }
+
+    if (RETURN_TYPES.includes(invoice.invoiceType)) {
+      throw Object.assign(new Error("Return invoices cannot be cancelled"), {
+        statusCode: 422,
+      });
     }
 
     if (invoice.isCancelled) {
@@ -475,6 +575,13 @@ export const cancelInvoice = async (invoiceId, cancelledBy, reason = null) => {
         { statusCode: 422 },
       );
     }
+
+    // Reverse any overpayment credits tied to this invoice
+    await reverseCancelledInvoicePayments({
+      invoice,
+      cancelledBy,
+      session,
+    });
 
     if (INVENTORY_TYPES.includes(invoice.invoiceType)) {
       const branch = await Branch.findById(invoice.branchId).session(session);
