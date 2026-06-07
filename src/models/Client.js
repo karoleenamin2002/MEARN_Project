@@ -32,6 +32,15 @@ const clientSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // Positive  → client owes the company
+    // Negative  → company owes the client
+    // Updated only via ClientBalanceTransaction events (overpayment, refund, etc.)
+    // Normal invoice debt lives in Invoice.dueAmount — NOT here
+    currentBalance: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
