@@ -4,6 +4,7 @@ import {
   getProductTransactions,
   getBranchTransactions,
   getProductTransactionsInBranch,
+  adjustInventoryController,
 } from "../controllers/inventoryController.js";
 import { protect, authorize } from "../middleware/auth.js";
 import { adjustmentRules } from "../validations/inventoryAdjustment.validation.js";

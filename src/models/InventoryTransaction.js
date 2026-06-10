@@ -36,6 +36,7 @@ const inventoryTransactionSchema = new mongoose.Schema(
         "adjustment_in",
         "adjustment_out",
         "invoice_cancel",
+        "transfer",
       ],
       required: true,
     },
@@ -46,9 +47,18 @@ const inventoryTransactionSchema = new mongoose.Schema(
 
     reason: {
       type: String,
-      enum: ["damage", "expired", "lost", "manual_count", "correction", "other"],
+      enum: [
+        "damage",
+        "expired",
+        "lost",
+        "manual_count",
+        "correction",
+        "other",
+      ],
       required: function () {
-        return ["adjustment_in", "adjustment_out"].includes(this.transactionType);
+        return ["adjustment_in", "adjustment_out"].includes(
+          this.transactionType,
+        );
       },
     },
 

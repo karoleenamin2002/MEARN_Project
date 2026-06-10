@@ -18,26 +18,22 @@ import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
+import transferRoutes from "./routes/Transfer.routes.js";
 
 import dns from "node:dns";
 
 // dns.setServers(["8.8.8.8", "8.8.4.4"]);
 dns.setServers(["1.1.1.1", "1.0.0.1"]);
 
-// Get __dirname equivalent in ES Modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
-// ============ EXPRESS APP INITIALIZATION ============
+connectDB();
 
 const app = express();
 
-// ============ MIDDLEWARE ============
-
-// CORS - Allow cross-origin requests
 app.use(cors());
-
-// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,7 +42,6 @@ if (process.env.NODE_ENV === "development") {
 }
 
 app.use("/uploads", express.static(join(__dirname, "../uploads")));
-
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -58,7 +53,8 @@ app.use("/api/invoice-documents", invoiceDocumentRoutes);
 app.use("/api/inventory-transactions", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
-
+app.use("/api/inventory-count", inventoryCountRoutes);
+app.use("/api/transfer", transferRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({
