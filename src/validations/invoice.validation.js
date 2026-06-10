@@ -89,9 +89,11 @@ export const createInvoiceRules = [
     .custom(isMongoId).withMessage("branchId must be a valid MongoDB ObjectId"),
 
   body("clientId")
-    .optional({ nullable: true })
-    .custom(isNullableMongoId)
-    .withMessage("clientId must be a valid MongoDB ObjectId"),
+  .if((_, { req }) => req.body.invoiceType !== "expense")
+  .notEmpty()
+  .withMessage("clientId is required")
+  .isMongoId()
+  .withMessage("Invalid clientId"),
 
   body("paymentMethod")
     .notEmpty().withMessage("paymentMethod is required")
