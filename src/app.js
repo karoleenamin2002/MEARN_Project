@@ -66,6 +66,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use("/api/transfers", transferRoutes);
 app.use("/api/clients", clientRoutes);
 
 // initRoutes(app);
