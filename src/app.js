@@ -1,28 +1,8 @@
-import 'dotenv/config.js';
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-import connectDB from './config/db.js';
-import errorHandler from './middleware/errorHandler.js';
-
-// Routes
-import authRoutes from './routes/auth.routes.js';
-import userRoutes from './routes/user.routes.js';
-import clientRoutes from './routes/client.routes.js';
-import productRoutes from './routes/product.routes.js';
-import invoiceRoutes from './routes/invoice.routes.js';
-import invoiceDocumentRoutes from './routes/invoiceDocument.routes.js';
-import inventoryRoutes from './routes/inventory.routes.js';
-import notificationRoutes from './routes/notification.routes.js';
-
-// Get __dirname equivalent in ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ============ EXPRESS APP CONFIGURATION ============
+import express from "express";
+import cors from "cors";
+import { connectDB } from "./config/db.js";
+import dotenv from "dotenv";
+import clientRoutes from "./modules/clients/clients.routes.js";
 
 const app = express();
 
@@ -86,25 +66,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ============ 404 HANDLER ============
+app.use("/api/clients", clientRoutes);
 
-/**
- * Handle undefined routes
- */
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.originalUrl}`,
-    method: req.method,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// ============ ERROR HANDLER ============
-
-// Global error handling middleware (must be last)
-app.use(errorHandler);
-
-// ============ EXPORT ============
+// initRoutes(app);
 
 export default app;

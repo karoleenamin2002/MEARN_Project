@@ -1,15 +1,42 @@
-import { Router } from 'express';
-import { getInvoices, getInvoice, createInvoice, updateInvoice, deleteInvoice, getStats } from '../controllers/invoiceController.js';
-import { protect, authorize } from '../middleware/auth.js';
-
+import { Router } from "express";
+import { protect, authorize } from "../middleware/auth.js";
+import * as invoiceController from "../controllers/invoiceController.js";
+import {
+  createInvoiceRules,
+  getInvoicesRules,
+  getInvoiceByIdRules,
+  cancelInvoiceRules,
+} from "../validations/invoice.validation.js";
 const router = Router();
 
 router.use(protect);
-router.get('/stats', getStats);
-router.get('/', getInvoices);
-router.get('/:id', getInvoice);
-router.post('/', createInvoice);
-router.put('/:id', authorize('admin'), updateInvoice);
-router.delete('/:id', authorize('admin'), deleteInvoice);
+
+router.post(
+  "/",
+  authorize("admin", "employee"),
+  createInvoiceRules,
+  invoiceController.createInvoice
+);
+
+router.get(
+  "/",
+  authorize("admin", "employee"),
+  getInvoicesRules,
+  invoiceController.getInvoices
+);
+
+router.get(
+  "/:id",
+  authorize("admin", "employee"),
+  getInvoiceByIdRules,
+  invoiceController.getInvoiceById
+);
+
+router.post(
+  "/:id/cancel",
+  authorize("admin", "employee"),
+  cancelInvoiceRules,
+  invoiceController.cancelInvoice
+);
 
 export default router;
