@@ -24,6 +24,10 @@ import dns from "node:dns";
 // dns.setServers(["8.8.8.8", "8.8.4.4"]);
 dns.setServers(["1.1.1.1", "1.0.0.1"]);
 
+import dns from "node:dns";
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 // Get __dirname equivalent in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

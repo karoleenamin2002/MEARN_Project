@@ -1,8 +1,9 @@
 import { Router } from "express";
 import {
-  getTransactions,
+  getInventoryTransactions,
   getProductTransactions,
-  adjustInventoryController,
+  getBranchTransactions,
+  getProductTransactionsInBranch,
 } from "../controllers/inventoryController.js";
 import { protect, authorize } from "../middleware/auth.js";
 import { adjustmentRules } from "../validations/inventoryAdjustment.validation.js";
@@ -10,15 +11,15 @@ import { adjustmentRules } from "../validations/inventoryAdjustment.validation.j
 const router = Router();
 
 router.use(protect);
-
+router.get("/", getInventoryTransactions);
+router.get("/product/:id", getProductTransactions);
+router.get("/branch/:id", getBranchTransactions);
+router.get("/:branchId/:productId", getProductTransactionsInBranch);
 router.post(
   "/adjust",
   authorize("admin", "employee"),
   adjustmentRules,
   adjustInventoryController,
 );
-
-router.get("/", getTransactions);
-router.get("/product/:productId", getProductTransactions);
 
 export default router;
