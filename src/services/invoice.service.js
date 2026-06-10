@@ -178,6 +178,11 @@ export const createInvoice = async (body, createdBy) => {
       amountPaid = 0,
       baseAmount: expenseBaseAmount = null,
     } = body;
+    if (invoiceType !== "expense" && !clientId) {
+  throw Object.assign(new Error("clientId is required for non-expense invoices"), {
+    statusCode: 422,
+  });
+}
 
     // ── 1. Validate return invoice references original ──────────────────
     if (RETURN_TYPES.includes(invoiceType)) {

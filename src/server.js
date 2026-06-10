@@ -21,16 +21,23 @@ import paymentRoutes from "./routes/payment.routes.js";
 
 import dns from "node:dns";
 
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+// dns.setServers(["8.8.8.8", "8.8.4.4"]);
+dns.setServers(["1.1.1.1", "1.0.0.1"]);
 
+// Get __dirname equivalent in ES Modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
-connectDB();
+// ============ EXPRESS APP INITIALIZATION ============
 
 const app = express();
 
+// ============ MIDDLEWARE ============
+
+// CORS - Allow cross-origin requests
 app.use(cors());
+
+// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,7 +47,7 @@ if (process.env.NODE_ENV === "development") {
 
 app.use("/uploads", express.static(join(__dirname, "../uploads")));
 
-// Routes
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
@@ -52,7 +59,7 @@ app.use("/api/inventory-transactions", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// Health Check
+
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",

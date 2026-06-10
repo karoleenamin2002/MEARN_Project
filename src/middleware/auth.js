@@ -23,12 +23,12 @@ export const protect = async (req, res, next) => {
   try {
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
-    let token = null;
+    let token = authHeader;
 
     // Validate Authorization header format
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    }
+    // if (authHeader && authHeader.startsWith('Bearer ')) {
+    //   token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    // }
 
     // Check if token exists
     if (!token) {
