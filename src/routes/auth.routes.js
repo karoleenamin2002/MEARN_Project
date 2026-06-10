@@ -20,7 +20,9 @@ router.post("/login", login);
  * @desc    Register new user (admin only)
  * @access  Private/Admin
  */
-router.post("/register", protect, authorize("admin"), register);
+// بجرب حاجه هنا فقفلتها توفيق
+// router.post("/register", protect, authorize("admin"), register);
+router.post("/register", register);
 
 /**
  * @route   GET /api/auth/me
