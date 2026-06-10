@@ -90,6 +90,40 @@ const invoiceSchema = new mongoose.Schema(
       default: null,
     },
 
+    expenseName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    expenseType: {
+      type: String,
+      enum: [
+        "rent",
+        "salary",
+        "electricity",
+        "internet",
+        "transportation",
+        "maintenance",
+        "marketing",
+        "office_supplies",
+        "other",
+      ],
+      default: null,
+    },
+
+    expenseDescription: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    expenseOtherNotes: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
     // Amounts (computed by Service, stored as-is)
     baseAmount: {
       type: Number,
@@ -205,10 +239,39 @@ const invoiceSchema = new mongoose.Schema(
   },
 );
 
+invoiceSchema.pre("validate", function (next) {
+  if (this.invoiceType === "expense") {
+    if (!this.expenseName) {
+      return next(new Error("expenseName is required"));
+    }
+
+    if (!this.expenseType) {
+      return next(new Error("expenseType is required"));
+    }
+
+    if (this.expenseType === "other" && !this.expenseOtherNotes) {
+      return next(
+        new Error("expenseOtherNotes is required when expenseType is other"),
+      );
+    }
+    if (this.invoiceType === "expense") {
+      if (this.baseAmount <= 0) {
+        return next(new Error("Expense amount must be greater than zero"));
+      }
+    }
+
+    this.clientId = null;
+    this.saleSource = null;
+  }
+
+  next();
+});
+
 //Indexes
 invoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
 invoiceSchema.index({ branchId: 1, createdAt: -1 });
 invoiceSchema.index({ invoiceType: 1, createdAt: -1 });
+invoiceSchema.index({ invoiceType: 1, expenseType: 1, createdAt: -1 });
 invoiceSchema.index({ clientId: 1 });
 invoiceSchema.index({ relatedInvoiceId: 1 });
 invoiceSchema.index({ isCancelled: 1 });

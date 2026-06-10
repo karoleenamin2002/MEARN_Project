@@ -1,6 +1,8 @@
 import InventoryTransaction from "../models/InventoryTransaction.js";
 import Branch from "../models/Branch.js";
 import invoice from "../models/Invoice.js";
+import APIFeatures from "../utils/apiFeatures.js";
+import { adjustInventory } from "../services/inventoryAdjustment.service.js";
 
 const getTransactions = async (IDs, queryParams) => {
   const { transactionType, from, to, page = 1, limit = 20 } = queryParams;
@@ -82,5 +84,22 @@ export const getProductTransactionsInBranch = async (req, res, next) => {
     res.status(200).json(response);
   } catch (err) {
     next(err);
+  }
+};
+
+// @desc    Adjust branch inventory after manual stock count
+// @route   POST /api/inventory-transactions/adjust
+// @access  Private
+export const adjustInventoryController = async (req, res, next) => {
+  try {
+    const transaction = await adjustInventory(req.body, req.user._id);
+
+    res.status(201).json({
+      success: true,
+      message: "Inventory adjusted successfully",
+      data: transaction,
+    });
+  } catch (error) {
+    next(error);
   }
 };
