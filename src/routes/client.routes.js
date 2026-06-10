@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { protect, authorize } from "../middleware/auth.js";
 import {
   getClients,
   getClientById,
@@ -6,13 +7,25 @@ import {
   updateClient,
   deleteClient,
 } from "../controllers/clientController.js";
+import { getClientBalance } from "../controllers/paymentController.js";
+import { getClientBalanceRules } from "../validations/payment.validation.js";
 
 const router = Router();
 
-router.get("/", getClients);
-router.get("/:id", getClientById);
-router.post("/", createClient);
-router.put("/:id", updateClient);
-router.delete("/:id", deleteClient);
+router.use(protect);
+
+router.get("/", authorize("admin", "employee"), getClients);
+router.get("/:id", authorize("admin", "employee"), getClientById);
+router.post("/", authorize("admin"), createClient);
+router.put("/:id", authorize("admin"), updateClient);
+router.delete("/:id", authorize("admin"), deleteClient);
+
+// Payments & Balances
+router.get(
+  "/:id/balance",
+  authorize("admin", "employee"),
+  getClientBalanceRules,
+  getClientBalance
+);
 
 export default router;
