@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === "development") {
 
 app.use("/uploads", express.static(join(__dirname, "../uploads")));
 
-// Routes
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
@@ -52,7 +52,7 @@ app.use("/api/inventory-transactions", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// Health Check
+
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",

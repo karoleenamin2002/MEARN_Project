@@ -33,7 +33,8 @@ const inventoryTransactionSchema = new mongoose.Schema(
         "sale",
         "purchase_return",
         "sales_return",
-        "adjustment",
+        "adjustment_in",
+        "adjustment_out",
         "invoice_cancel",
       ],
       required: true,
@@ -43,9 +44,22 @@ const inventoryTransactionSchema = new mongoose.Schema(
     quantityBefore: { type: Number, required: true },
     quantityAfter: { type: Number, required: true },
 
+    reason: {
+      type: String,
+      enum: ["damage", "expired", "lost", "manual_count", "correction", "other"],
+      required: function () {
+        return ["adjustment_in", "adjustment_out"].includes(this.transactionType);
+      },
+    },
+
     sourceInvoiceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
 
     notes: {
@@ -68,6 +82,11 @@ inventoryTransactionSchema.index({
 
 inventoryTransactionSchema.index({
   sourceInvoiceId: 1,
+});
+
+inventoryTransactionSchema.index({
+  transactionType: 1,
+  createdAt: -1,
 });
 
 export default mongoose.model(
