@@ -3,7 +3,7 @@ import cors from "cors";
 import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
 import clientRoutes from "./modules/clients/clients.routes.js";
-
+import transferRoutes from "./routes/transfer.routes.js";
 dotenv.config();
 const app = express();
 
@@ -18,6 +18,7 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({ message });
 });
 
+app.use("/api/transfers", transferRoutes);
 app.use("/api/clients", clientRoutes);
 
 // initRoutes(app);
