@@ -5,6 +5,7 @@ import { protect } from '../middleware/auth.js';
 const router = Router();
 
 router.use(protect);
+
 router.get('/', getTransactions);
 router.get('/product/:productId', getProductTransactions);
 

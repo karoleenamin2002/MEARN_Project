@@ -12,11 +12,16 @@ import errorHandler from "./middleware/errorHandler.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 // import clientRoutes from './routes/client.routes.js';
-// import productRoutes from "./routes/product.routes.js";
+import productRoutes from "./routes/product.routes.js";
 // import invoiceRoutes from "./routes/invoice.routes.js";
 // import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
 // import inventoryRoutes from "./routes/inventory.routes.js";
 // import notificationRoutes from "./routes/notification.routes.js";
+import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
+
+import dns from "node:dns";
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 // Get __dirname equivalent in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -54,8 +59,8 @@ app.use("/api/users", userRoutes);
 // // Client routes
 // app.use("/api/clients", clientRoutes);
 
-// // Product routes
-// app.use("/api/products", productRoutes);
+// Product routes
+app.use("/api/products", productRoutes);
 
 // // Invoice routes
 // app.use("/api/invoices", invoiceRoutes);
@@ -68,6 +73,8 @@ app.use("/api/users", userRoutes);
 
 // // Notification routes
 // app.use("/api/notifications", notificationRoutes);
+
+app.use("/api/inventory-count", inventoryCountRoutes);
 
 // ============ HEALTH CHECK ============
 
