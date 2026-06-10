@@ -41,7 +41,6 @@ export const initiateCount = async (req, res, next) => {
     });
 
     res.status(201).json({
-      success: true,
       message: "Inventory count initiated successfully",
       data: count,
     });
@@ -52,15 +51,35 @@ export const initiateCount = async (req, res, next) => {
 
 export const getCounts = async (req, res, next) => {
   try {
-    const counts = await InventoryCount.find()
+    const { countType, from, to, page = 1, limit = 20 } = req.query;
+    const filter = {};
+
+    if (countType) filter.countType = countType;
+
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) filter.createdAt.$lte = new Date(to);
+    }
+
+    const start = (Number(page) - 1) * Number(limit);
+    const end = Number(page) * Number(limit);
+    const total = await InventoryCount.countDocuments(filter);
+    const counts = await InventoryCount.find(filter)
       .populate("branch", "name address")
       .populate("countedBy", "name email")
-      .populate("items.product", "name barcode category sellPrice buyPrice");
+      .populate("items.product", "name barcode category sellPrice buyPrice")
+      .skip(start)
+      .limit(Number(limit));
 
+    const results = {};
+    results.total = total;
+    results.data = counts;
+    if (Number(page) > 1) results.prevPage = Number(page) - 1;
+    if (end < total) results.nextPage = Number(page) + 1;
     res.json({
-      success: true,
       count: counts.length,
-      data: counts,
+      results,
     });
   } catch (error) {
     next(error);
@@ -81,7 +100,6 @@ export const getCount = async (req, res, next) => {
     }
 
     res.json({
-      success: true,
       data: count,
     });
   } catch (error) {
@@ -113,10 +131,7 @@ export const updateCount = async (req, res, next) => {
       if (actualItem) {
         actualItem.countedQuantity = Number(item.countedQuantity);
       }
-      //   console.log(actualItem);
-      //   console.log(count.items)
     }
-    // console.log(items);
     if (notes) {
       count.notes = notes;
     }
@@ -201,7 +216,6 @@ export const cancelCount = async (req, res, next) => {
     await count.save();
 
     res.json({
-      success: true,
       message: "Inventory count cancelled successfully",
       data: count,
     });
