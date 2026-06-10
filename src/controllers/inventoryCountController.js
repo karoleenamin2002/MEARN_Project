@@ -86,6 +86,45 @@ export const getCounts = async (req, res, next) => {
   }
 };
 
+export const getBranchCounts = async (req, res, next) => {
+  try {
+    const { countType, from, to, page = 1, limit = 20 } = req.query;
+    const { id } = req.params;
+    const filter = {};
+
+    if (countType) filter.countType = countType;
+
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) filter.createdAt.$lte = new Date(to);
+    }
+    filter.branch = id;
+
+    const start = (Number(page) - 1) * Number(limit);
+    const end = Number(page) * Number(limit);
+    const total = await InventoryCount.countDocuments(filter);
+    const counts = await InventoryCount.find(filter)
+      .populate("branch", "name address")
+      .populate("countedBy", "name email")
+      .populate("items.product", "name barcode category sellPrice buyPrice")
+      .skip(start)
+      .limit(Number(limit));
+
+    const results = {};
+    results.total = total;
+    results.data = counts;
+    if (Number(page) > 1) results.prevPage = Number(page) - 1;
+    if (end < total) results.nextPage = Number(page) + 1;
+    res.json({
+      count: counts.length,
+      results,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getCount = async (req, res, next) => {
   try {
     const count = await InventoryCount.findById(req.params.id)
