@@ -1,58 +1,71 @@
-import path from 'path';
-import InvoiceDocument from '../models/InvoiceDocument.js';
-import Invoice from '../models/Invoice.js';
+import { catchError } from "../utils/catchError.js";
+import {
+  invoiceDocumentBodyValidation,
+  invoiceDocumentFileValidation,
+} from "../validations/invoiceDocument.validation.js";
+import documentModel from "../models/InvoiceDocument.js";
+import invoiceModel from "../models/Invoice.js";
+import AppError from "../utils/appError.js";
 
-// @desc    Upload document for invoice
-// @route   POST /api/invoice-documents
-// @access  Private
-export const uploadDocument = async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
+export const createInvoiceDocument = catchError(async (req, res) => {
+  const { error, value: inputValues } = invoiceDocumentBodyValidation.validate(
+    req.body,
+  );
 
-    const { invoiceId } = req.body;
-    const ext = path.extname(req.file.originalname).slice(1).toLowerCase();
-
-    const doc = await InvoiceDocument.create({
-      invoiceId: invoiceId || null,
-      fileName: req.file.originalname,
-      fileType: ext,
-      fileUrl: `/uploads/${req.file.filename}`,
+  if (error) {
+    return res.status(400).json({
+      message: "Validation failed",
+      errors: error.details.map((detail) => detail.message),
     });
-
-    if (invoiceId) {
-      await Invoice.findByIdAndUpdate(invoiceId, { documentId: doc._id });
-    }
-
-    res.status(201).json({ success: true, data: doc });
-  } catch (error) {
-    next(error);
   }
-};
 
-// @desc    Get document by id
-// @route   GET /api/invoice-documents/:id
-// @access  Private
-export const getDocument = async (req, res, next) => {
-  try {
-    const doc = await InvoiceDocument.findById(req.params.id).populate('invoiceId');
-    if (!doc) return res.status(404).json({ success: false, message: 'Document not found' });
-    res.json({ success: true, data: doc });
-  } catch (error) {
-    next(error);
-  }
-};
+  const { invoiceId, ocrText, uploadedAt } = inputValues;
 
-// @desc    Delete document
-// @route   DELETE /api/invoice-documents/:id
-// @access  Private/Admin
-export const deleteDocument = async (req, res, next) => {
-  try {
-    const doc = await InvoiceDocument.findByIdAndDelete(req.params.id);
-    if (!doc) return res.status(404).json({ success: false, message: 'Document not found' });
-    res.json({ success: true, message: 'Document deleted' });
-  } catch (error) {
-    next(error);
+  const invoice = await invoiceModel.findById(invoiceId);
+
+  /**
+   * Find the whether the invoice exist in the database or not
+   */
+
+  if (!invoice) {
+    throw new AppError(`There is no invoice with this ID ${invoiceId}`, 404);
   }
-};
+
+  if (invoice.documentId) {
+    throw new AppError("This invoice already has a document", 400);
+  }
+
+  if (!req.cloudInvoice) {
+    throw new AppError("Invoice file is required", 400);
+  }
+
+  const { error: reqError, value: requestValues } =
+    invoiceDocumentFileValidation.validate(req.cloudInvoice);
+
+  if (reqError) {
+    return res.status(400).json({
+      message: "Validation failed",
+      errors: reqError.details.map((detail) => detail.message),
+    });
+  }
+
+  const { fileName, fileType, fileUrl,publicId  } = requestValues;
+
+const newDocument = await documentModel.create({
+  invoiceId,
+  fileName,
+  fileType,
+  fileUrl,
+  publicId,
+  ocrText,
+  uploadedAt,
+});
+  invoice.documentId = newDocument._id;
+  await invoice.save();
+
+  res.status(201).json({
+    success: true,
+    message: "Invoice document uploaded and linked successfully",
+    data: newDocument,
+  });
+});
