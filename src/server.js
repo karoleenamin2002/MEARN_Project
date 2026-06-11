@@ -1,155 +1,81 @@
-import "dotenv/config.js";
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import path from "path";
 import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 import connectDB from "./config/db.js";
 import errorHandler from "./middleware/errorHandler.js";
 
-// Routes
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
-// import clientRoutes from './routes/client.routes.js';
-// import productRoutes from "./routes/product.routes.js";
-// import invoiceRoutes from "./routes/invoice.routes.js";
+import clientRoutes from "./routes/client.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import branchRoutes from "./routes/branch.routes.js";
+import invoiceRoutes from "./routes/invoice.routes.js";
 import invoiceDocumentRoutes from "./routes/invoiceDocument.routes.js";
-// import inventoryRoutes from "./routes/inventory.routes.js";
-// import notificationRoutes from "./routes/notification.routes.js";
+import inventoryRoutes from "./routes/inventory.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
+import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
+import transferRoutes from "./routes/Transfer.routes.js";
 
-// Get __dirname equivalent in ES Modules
+import dns from "node:dns";
+
+// dns.setServers(["8.8.8.8", "8.8.4.4"]);
+dns.setServers(["1.1.1.1", "1.0.0.1"]);
+
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
-// ============ EXPRESS APP INITIALIZATION ============
+connectDB();
 
 const app = express();
 
-// ============ MIDDLEWARE ============
-
-// CORS - Allow cross-origin requests
 app.use(cors());
-
-// Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-// Serve uploaded files statically
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/uploads", express.static(join(__dirname, "../uploads")));
 
-// ============ API ROUTES ============
-
-// Authentication routes
 app.use("/api/auth", authRoutes);
-
-// User management routes
 app.use("/api/users", userRoutes);
+app.use("/api/clients", clientRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/branches", branchRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/invoice-documents", invoiceDocumentRoutes);
+app.use("/api/inventory-transactions", inventoryRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/inventory-count", inventoryCountRoutes);
+app.use("/api/transfer", transferRoutes);
 
-// // Client routes
-// app.use("/api/clients", clientRoutes);
-
-// // Product routes
-// app.use("/api/products", productRoutes);
-
-// // Invoice routes
-// app.use("/api/invoices", invoiceRoutes);
-
-// // Invoice document routes
-app.use("/api/upload-invoice", invoiceDocumentRoutes);
-
-// // Inventory transaction routes
-// app.use("/api/inventory-transactions", inventoryRoutes);
-
-// // Notification routes
-// app.use("/api/notifications", notificationRoutes);
-
-// ============ HEALTH CHECK ============
-
-/**
- * @route   GET /api/health
- * @desc    Health check endpoint
- * @access  Public
- */
 app.get("/api/health", (req, res) => {
   res.json({
-    success: true,
     status: "OK",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || "production",
+    timestamp: new Date(),
   });
 });
 
-// ============ 404 HANDLER ============
-
-/**
- * Handle undefined routes
- */
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route not found: ${req.originalUrl}`,
-    method: req.method,
-    timestamp: new Date().toISOString(),
+    message: "Route not found",
   });
 });
 
-// ============ ERROR HANDLER ============
-
-// Global error handling middleware (must be last)
+// Error Handler
 app.use(errorHandler);
 
-// ============ SERVER STARTUP ============
+const PORT = process.env.PORT || 3000;
 
-/**
- * Initialize database connection and start server
- */
-const startServer = async () => {
-  try {
-    // Connect to MongoDB
-    console.log("📡 Connecting to MongoDB...");
-    await connectDB();
-    console.log("✅ MongoDB connected successfully");
-
-    // Start listening
-    const PORT = process.env.PORT || 3000;
-    const NODE_ENV = process.env.MONGO || "development";
-
-    app.listen(PORT, () => {
-      console.log(`
-╔════════════════════════════════════════╗
-║     🚀 Server Running Successfully    ║
-╠════════════════════════════════════════╣
-║ Port:        ${PORT.toString().padEnd(29)} ║
-║ Environment: ${NODE_ENV.padEnd(28)} ║
-║ URL:         http://localhost:${PORT}${" ".repeat(Math.max(0, PORT.toString().length - 1))}║
-╚════════════════════════════════════════╝
-      `);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
-    process.exit(1);
-  }
-};
-
-// ============ GRACEFUL SHUTDOWN ============
-
-process.on("SIGTERM", () => {
-  console.log("\n⚠️  SIGTERM signal received: closing HTTP server");
-  process.exit(0);
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
 });
-
-process.on("SIGINT", () => {
-  console.log("\n⚠️  SIGINT signal received: closing HTTP server");
-  process.exit(0);
-});
-
-// ============ START SERVER ============
-
-startServer();

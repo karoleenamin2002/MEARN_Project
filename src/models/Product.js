@@ -7,10 +7,6 @@ const productSchema = new mongoose.Schema(
     category: { type: String, trim: true },
     buyPrice: { type: Number, required: [true, 'Buy price is required'], min: 0 },
     sellPrice: { type: Number, required: [true, 'Sell price is required'], min: 0 },
-    quantity: { type: Number, default: 0, min: 0 },
-    minimumStock: { type: Number, default: 0, min: 0 },
-    expiryDate: { type: Date },
-    supplier: { type: String, trim: true },
   },
   { timestamps: true }
 );
