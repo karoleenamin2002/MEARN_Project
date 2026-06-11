@@ -20,6 +20,8 @@ import notificationRoutes from "./routes/notification.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
 import transferRoutes from "./routes/Transfer.routes.js";
+import subscriptionRoutes from "./routes/subscription.routes.js";
+import { handleStripeWebhook } from "./controllers/subscriptionController.js";
 
 import dns from "node:dns";
 
@@ -34,8 +36,18 @@ connectDB();
 const app = express();
 
 app.use(cors());
+
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Subscription & Stripe routes (subscription plans, user subscriptions, Stripe webhook)
+app.use("/api", subscriptionRoutes);
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
@@ -55,6 +67,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/inventory-count", inventoryCountRoutes);
 app.use("/api/transfer", transferRoutes);
+
+
 
 app.get("/api/health", (req, res) => {
   res.json({

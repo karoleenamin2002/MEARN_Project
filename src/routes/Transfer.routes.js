@@ -3,7 +3,7 @@ import {
   createTransfer,
   getTransfers,
   getTransferById,
-} from "../controllers/transferController.js";
+} from "../controllers/Transfercontroller.js";
 import { protect } from "../middleware/auth.js";
 
 const router = Router();
