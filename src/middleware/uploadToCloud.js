@@ -1,5 +1,5 @@
 import AppError from "../utils/appError.js";
-// import { catchError } from "../utils/catchError.js";
+import { catchError } from "../utils/catchError.js";
 import cloudinary from "../config/uploadConfig.js";
 // import uploadInvoice from "../config/uploadConfig.js";
 import streamifier from "streamifier";

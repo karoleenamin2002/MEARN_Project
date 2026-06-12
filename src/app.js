@@ -16,38 +16,38 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging in development
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
 }
 
 // Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ============ API ROUTES ============
 
 // Authentication routes
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
 
 // User management routes
-app.use('/api/users', userRoutes);
+app.use("/api/users", userRoutes);
 
 // Client routes
-app.use('/api/clients', clientRoutes);
+app.use("/api/clients", clientRoutes);
 
 // Product routes
-app.use('/api/products', productRoutes);
+app.use("/api/products", productRoutes);
 
 // Invoice routes
-app.use('/api/invoices', invoiceRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 // Invoice document routes
-app.use('/api/invoice-documents', invoiceDocumentRoutes);
+app.use("/api/upload-invoice", invoiceDocumentRoutes);
 
 // Inventory transaction routes
-app.use('/api/inventory-transactions', inventoryRoutes);
+app.use("/api/inventory-transactions", inventoryRoutes);
 
 // Notification routes
-app.use('/api/notifications', notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // ============ HEALTH CHECK ============
 
@@ -56,13 +56,13 @@ app.use('/api/notifications', notificationRoutes);
  * @desc    Health check endpoint
  * @access  Public
  */
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     success: true,
-    status: 'OK',
+    status: "OK",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'production',
+    environment: process.env.NODE_ENV || "production",
   });
 });
 
