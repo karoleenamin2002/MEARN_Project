@@ -20,6 +20,8 @@ import notificationRoutes from "./routes/notification.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
 import transferRoutes from "./routes/Transfer.routes.js";
+import dashboardRouter from "./routes/dashboard.routes.js";
+import { protect } from "./middleware/auth.js";
 
 import dns from "node:dns";
 
@@ -55,6 +57,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/inventory-count", inventoryCountRoutes);
 app.use("/api/transfer", transferRoutes);
+app.use('/api/dashboard', protect, dashboardRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({
