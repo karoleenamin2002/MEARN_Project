@@ -25,21 +25,58 @@ function daysAgoStart(n) {
   return d;
 }
 
+const ALL_INVOICE_TYPES = [
+  "purchase",
+  "sale",
+  "purchase_return",
+  "sales_return",
+  "expense",
+];
+
+/** Build a lookup from aggregate rows keyed by invoiceType. */
+function totalsByType(rows) {
+  //the row is an object contains (the total of specific invoice type amount and the id with is (the invice type itself))
+  const map = Object.fromEntries(
+    ALL_INVOICE_TYPES.map((t) => [t, 0]),
+  );
+  for (const row of rows) {
+    if (row._id in map) map[row._id] = row.total;
+  }
+  return map;
+}
+
+/** Net sales: sale minus sales_return. */
+function netSales(totals) {
+  return totals.sale - totals.sales_return;
+}
+
+/** Net purchases: purchase minus purchase_return. */
+function netPurchases(totals) {
+  return totals.purchase - totals.purchase_return;
+}
+
+/** Net profit: net sales minus net purchases and expenses. */
+function netProfit(totals) {
+  return netSales(totals) - netPurchases(totals) - totals.expense;
+}
+
 // ─── KPI ────────────────────────────────────────────────────────────────────
 
 /**
- * Aggregate today's sales total, purchases total, and net profit.
- * Only non-cancelled invoices count.
+ * Aggregate today's net sales, net purchases, and net profit.
+ * Sales = sale − sales_return; purchases = purchase − purchase_return;
+ * profit = net sales − net purchases − expenses. Only non-cancelled invoices count.
  */
 export async function getKpis() {
   const { start, end } = dayRange(0);
+  const yesterday = dayRange(-1);
 
   const [todayResult, yesterdayResult] = await Promise.all([
     Invoice.aggregate([
       {
         $match: {
           isCancelled: false,
-          invoiceType: { $in: ["sale", "purchase"] },
+          invoiceType: { $in: ALL_INVOICE_TYPES },
           createdAt: { $gte: start, $lt: end },
         },
       },
@@ -56,8 +93,8 @@ export async function getKpis() {
       {
         $match: {
           isCancelled: false,
-          invoiceType: { $in: ["sale", "purchase"] },
-          createdAt: { $gte: dayRange(-1).start, $lt: dayRange(-1).end },
+          invoiceType: { $in: ALL_INVOICE_TYPES },
+          createdAt: { $gte: yesterday.start, $lt: yesterday.end },
         },
       },
       {
@@ -69,15 +106,16 @@ export async function getKpis() {
     ]),
   ]);
 
-  const extract = (arr, type) => arr.find((r) => r._id === type)?.total ?? 0;
+  const todayTotals = totalsByType(todayResult);
+  const yesterdayTotals = totalsByType(yesterdayResult);
 
-  const todaySales = extract(todayResult, "sale");
-  const todayPurchases = extract(todayResult, "purchase");
-  const todayProfit = todaySales - todayPurchases;
+  const todaySales = netSales(todayTotals);
+  const todayPurchases = netPurchases(todayTotals);
+  const todayProfit = netProfit(todayTotals);
 
-  const yestSales = extract(yesterdayResult, "sale");
-  const yestPurchases = extract(yesterdayResult, "purchase");
-  const yestProfit = yestSales - yestPurchases;
+  const yestSales = netSales(yesterdayTotals);
+  const yestPurchases = netPurchases(yesterdayTotals);
+  const yestProfit = netProfit(yesterdayTotals);
 
   const pctChange = (today, yesterday) => {
     if (yesterday === 0) return today > 0 ? 100 : 0;
@@ -107,6 +145,7 @@ export async function getKpis() {
 
 /**
  * Returns parallel arrays: labels (day strings), salesData, purchasesData.
+ * Sales per day = sale − sales_return; purchases per day = purchase − purchase_return.
  * One entry per day for the last `days` days (default 30).
  */
 //Done understood
@@ -118,7 +157,9 @@ export async function getSalesPurchasesChart(days = 30) {
     {
       $match: {
         isCancelled: false,
-        invoiceType: { $in: ["sale", "purchase"] },
+        invoiceType: {
+          $in: ["sale", "purchase", "sales_return", "purchase_return"],
+        },
         createdAt: { $gte: rangeStart, $lt: now },
       },
     },
@@ -149,6 +190,7 @@ export async function getSalesPurchasesChart(days = 30) {
   const salesMap = {};
   const purchasesMap = {};
 
+  //this loop output two objects (each one its keys are the dates (30 days) and the values are 0)
   for (let i = 0; i < days; i++) {
     const d = new Date(rangeStart);
     d.setUTCDate(d.getUTCDate() + i);
@@ -157,10 +199,13 @@ export async function getSalesPurchasesChart(days = 30) {
     purchasesMap[key] = 0;
   }
 
+  //the rows ordered by the date
   for (const row of rows) {
     const { date, type } = row._id;
-    if (type === "sale") salesMap[date] = row.total;
-    else if (type === "purchase") purchasesMap[date] = row.total;
+    if (type === "sale") salesMap[date] += row.total;
+    else if (type === "sales_return") salesMap[date] -= row.total;
+    else if (type === "purchase") purchasesMap[date] += row.total;
+    else if (type === "purchase_return") purchasesMap[date] -= row.total;
   }
 
   const labels = Object.keys(salesMap).sort();
@@ -252,13 +297,13 @@ export async function getFinancialSummary() {
       },
     ]),
 
-    // Client receivables: sum of dueAmount on active (non-cancelled) invoices
+    // Client receivables: sum of dueAmount on active (non-cancelled) sale invoices
     Invoice.aggregate([
       {
         $match: {
           isCancelled: false,
           dueAmount: { $gt: 0 },
-          invoiceType: { $in: ["sale", "expense"] },
+          invoiceType: "sale",
         },
       },
       { $group: { _id: null, total: { $sum: "$dueAmount" } } },
@@ -319,14 +364,14 @@ export async function getRecentActivity(limit = 20) {
         time: inv.cancelledAt ?? inv.updatedAt,
       });
     } else {
-      const typeLabel =
-        inv.invoiceType === "sale"
-          ? "Sale Invoice"
-          : inv.invoiceType === "purchase"
-            ? "Purchase Invoice"
-            : inv.invoiceType === "expense"
-              ? "Expense"
-              : "Return";
+      const typeLabels = {
+        sale: "Sale Invoice",
+        purchase: "Purchase Invoice",
+        sales_return: "Sales Return",
+        purchase_return: "Purchase Return",
+        expense: "Expense",
+      };
+      const typeLabel = typeLabels[inv.invoiceType] ?? inv.invoiceType;
 
       events.push({
         type: "invoice_created",
