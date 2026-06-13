@@ -22,6 +22,8 @@ import inventoryCountRoutes from "./routes/inventoryCount.routes.js";
 import transferRoutes from "./routes/Transfer.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import { handleStripeWebhook } from "./controllers/subscriptionController.js";
+import dashboardRouter from "./routes/dashboard.routes.js";
+import { authorize, protect } from "./middleware/auth.js";
 
 import dns from "node:dns";
 
@@ -67,6 +69,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/inventory-count", inventoryCountRoutes);
 app.use("/api/transfer", transferRoutes);
+app.use('/api/dashboard', protect, authorize('admin'), dashboardRouter);
 
 
 

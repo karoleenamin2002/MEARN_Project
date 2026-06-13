@@ -25,10 +25,10 @@ export const protect = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     let token = authHeader;
 
-    // Validate Authorization header format
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    }
+ // Support standard Bearer prefix while keeping raw-token compatibility.
+if (authHeader && authHeader.startsWith('Bearer ')) {
+  token = authHeader.substring(7);
+}
 
     // Check if token exists
     if (!token) {
