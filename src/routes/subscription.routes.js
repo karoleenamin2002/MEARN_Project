@@ -5,7 +5,10 @@ import {
   createPlan,
   createCheckout,
   getMySubscription,
-  handleStripeWebhook,
+  getAllSubscriptions,
+  getUserSubscriptions,
+  updateUserSubscription,
+  // cancelUserSubscription,
 } from "../controllers/subscriptionController.js";
 
 const router = express.Router();
@@ -29,5 +32,33 @@ router.post(
 
 
 router.get("/subscriptions/me", protect, getMySubscription);
+
+router.get(
+  "/admin/subscriptions",
+  protect,
+  authorize("admin"),
+  getAllSubscriptions
+);
+
+router.get(
+  "/admin/users/:userId/subscriptions",
+  protect,
+  authorize("admin"),
+  getUserSubscriptions
+);
+
+router.patch(
+  "/admin/subscriptions/:id",
+  protect,
+  authorize("admin"),
+  updateUserSubscription
+);
+
+// router.patch(
+//   "/admin/subscriptions/:id/cancel",
+//   protect,
+//   authorize("admin"),
+//   cancelUserSubscription
+// );
 
 export default router;

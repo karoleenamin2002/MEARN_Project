@@ -254,6 +254,102 @@ export const createPayment = async (body, paidBy) => {
  * Returns a paginated list of PaymentTransactions.
  * Filterable by invoiceId, clientId, branchId, source.
  */
+
+export const recordSalesReturnRefund = async ({
+  returnInvoice,
+  originalInvoice,
+  session,
+  createdBy,
+}) => {
+  if (returnInvoice.invoiceType !== "sales_return") return;
+
+  if (!returnInvoice.clientId) return;
+
+  const previousReturns = await Invoice.find({
+    relatedInvoiceId: originalInvoice._id,
+    invoiceType: "sales_return",
+    isCancelled: false,
+    _id: { $ne: returnInvoice._id },
+  }).session(session);
+
+  const previousRefundedAmount = previousReturns.reduce((sum, inv) => {
+    return round2(sum + (inv.amountPaid || 0));
+  }, 0);
+
+  const remainingRefundable = round2(
+    originalInvoice.amountPaid - previousRefundedAmount
+  );
+
+  if (remainingRefundable <= 0) {
+    return;
+  }
+
+ const isFullReturn =
+  round2(returnInvoice.finalAmount) === round2(originalInvoice.finalAmount);
+
+const refundAmount = isFullReturn
+  ? remainingRefundable
+  : Math.min(returnInvoice.finalAmount, remainingRefundable);
+
+  if (refundAmount <= 0) return;
+
+  returnInvoice.amountPaid = refundAmount;
+  returnInvoice.dueAmount = 0;
+  returnInvoice.changeAmount = 0;
+
+  await returnInvoice.save({ session });
+
+  await PaymentTransaction.create(
+    [
+      {
+        invoiceId: returnInvoice._id,
+        clientId: returnInvoice.clientId,
+        branchId: returnInvoice.branchId,
+        amount: refundAmount,
+        paymentMethod: returnInvoice.paymentMethod,
+        source: "refund",
+        direction: "out",
+        paidBy: createdBy,
+        notes: `Refund for sales return invoice ${returnInvoice.invoiceNumber}`,
+      },
+    ],
+    { session }
+  );
+
+const overpaymentToClear = round2(
+  Math.max(0, refundAmount - returnInvoice.finalAmount)
+);
+
+if (overpaymentToClear > 0) {
+  const client = await Client.findById(returnInvoice.clientId).session(session);
+
+  if (!client) {
+    throw Object.assign(new Error("Client not found"), {
+      statusCode: 404,
+    });
+  }
+
+  client.currentBalance = round2(client.currentBalance + overpaymentToClear);
+
+  await client.save({ session });
+
+  await ClientBalanceTransaction.create(
+    [
+      {
+        clientId: returnInvoice.clientId,
+        amount: overpaymentToClear,
+        effect: "debit",
+        type: "refund",
+        balanceAfter: client.currentBalance,
+        sourceInvoiceId: returnInvoice._id,
+        createdBy,
+        notes: `Cleared overpayment because cash was refunded for sales return ${returnInvoice.invoiceNumber}`,
+      },
+    ],
+    { session }
+  );
+}
+};
 export const getPayments = async (query) => {
   const {
     invoiceId,

@@ -40,9 +40,14 @@ const paymentTransactionSchema = new mongoose.Schema(
     source: {
       type: String,
       enum: {
-        values: ["invoice_creation", "manual_payment", "cancellation_reversal"],
+        values: [
+          "invoice_creation",
+          "manual_payment",
+          "cancellation_reversal",
+          "refund",
+        ],
         message:
-          "source must be one of: invoice_creation, manual_payment,cancellation_reversal",
+          "source must be one of: invoice_creation, manual_payment, cancellation_reversal, refund",
       },
       required: [true, "source is required"],
     },
