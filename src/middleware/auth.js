@@ -25,11 +25,10 @@ export const protect = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     let token = authHeader;
 
-    // PHASE 1 FRONTEND INTEGRATION: Angular sends `Authorization: Bearer <token>`.
-    // Support standard Bearer prefix while keeping raw-token compatibility.
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
+ // Support standard Bearer prefix while keeping raw-token compatibility.
+if (authHeader && authHeader.startsWith('Bearer ')) {
+  token = authHeader.substring(7);
+}
 
     // Check if token exists
     if (!token) {

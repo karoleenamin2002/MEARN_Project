@@ -6,6 +6,7 @@ import InventoryTransaction from "../models/InventoryTransaction.js";
 import {
   recordInitialPayment,
   reverseCancelledInvoicePayments,
+  recordSalesReturnRefund,
 } from "./payment.service.js";
 
 //  Constants
@@ -420,12 +421,23 @@ export const createInvoice = async (body, createdBy) => {
 
     // ── 8. Record initial payment (if amountPaid > 0)
     // هنا نقطة الربط مع payment
-    await recordInitialPayment({
-      invoice,
-      session,
-      createdBy,
-      initialOverpayment,
-    });
+   if (invoiceType === "sales_return") {
+  const originalInvoice = await Invoice.findById(relatedInvoiceId).session(session);
+
+  await recordSalesReturnRefund({
+    returnInvoice: invoice,
+    originalInvoice,
+    session,
+    createdBy,
+  });
+} else {
+  await recordInitialPayment({
+    invoice,
+    session,
+    createdBy,
+    initialOverpayment,
+  });
+}
 
     await session.commitTransaction();
     return invoice;
